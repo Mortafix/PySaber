@@ -1,8 +1,12 @@
+aiohttp==3.7.3
+async-timeout==3.0.1
+attrs==20.3.0
+backoff==1.10.0
 beautifulsoup4==4.9.3
 bs4==0.0.1
 cachetools==4.2.1
 certifi==2020.12.5
-chardet==4.0.0
+chardet==3.0.4
 colorama==0.4.4
 colorifix==1.0.8
 emoji==1.2.0
@@ -15,6 +19,7 @@ halo==0.0.31
 httplib2==0.19.0
 idna==2.10
 log-symbols==0.0.14
+multidict==5.1.0
 packaging==20.9
 protobuf==3.15.0
 pyasn1==0.4.8
@@ -27,7 +32,10 @@ rsa==4.7.1
 six==1.15.0
 soupsieve==2.2
 spinners==0.0.24
+spotipy==2.16.1
 tabulate==0.8.8
 termcolor==1.1.0
+typing-extensions==3.7.4.3
 uritemplate==3.0.1
 urllib3==1.26.3
+yarl==1.6.3
