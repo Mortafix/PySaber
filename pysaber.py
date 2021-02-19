@@ -141,6 +141,13 @@ def combine_search(*songs_list):
     return list(set(sum(songs_list, start=[])))
 
 
+def special_song_name(lines):
+    if (m := search(r"(.+?)(\-\d+)?\s*$", lines)) and m.group(2):
+        return m.group(2)[1:], m.group(1).strip()
+    else:
+        return None, lines
+
+
 def main():
     # from command line (file or single search)
     if len(argv) > 1:
@@ -148,7 +155,9 @@ def main():
         if search(r"\.\w+", argv[1]):
             try:
                 songs_to_search = [
-                    (lines, None) for lines in open(argv[1]).read().split("\n") if lines
+                    (*special_song_name(lines), None)
+                    for lines in open(argv[1]).read().split("\n")
+                    if lines
                 ]
             except FileNotFoundError:
                 print(
@@ -166,7 +175,7 @@ def main():
         else:
             automatic = False
             playlist_name = None
-            songs_to_search = [(argv[1], None)]
+            songs_to_search = [(*special_song_name(argv[1]), None)]
             print(
                 paint("> Single song search ", Color.WHITE) + paint(argv[1], Color.BLUE)
             )
@@ -174,7 +183,7 @@ def main():
     else:
         spotify_playlist_link, automatic, playlist_name = retrieve_params()
         songs_to_search = [
-            (f"{title} {artist}", title)
+            (None, f"{title} {artist}", title)
             for title, artist in get_spotify_songs(spotify_playlist_link)
         ]
     if playlist_name:
@@ -182,7 +191,7 @@ def main():
             mkdir(playlist_name)
     print()
     # downloading
-    for song_more, song_less in songs_to_search:
+    for number, song_more, song_less in songs_to_search:
         bsaber_songs = search_songs(song_more)
         if song_less:
             bsaber_songs = combine_search(bsaber_songs, search_songs(song_less))
@@ -200,7 +209,7 @@ def main():
                         + paint("> Retry: [0:skip] ", Color.WHITE)
                     )
             else:
-                n = 1
+                n = number or 1
             if int(n):
                 selected_song = bsaber_songs[int(n) - 1]
                 song_name, song_link = selected_song[0], selected_song[-1]
