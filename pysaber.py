@@ -98,7 +98,7 @@ def retrieve_params(spotify=True):
                 paint("Bad link!", Color.RED) + paint(" Retry: ", Color.WHITE)
             )
     automatic = input(
-        paint("> Do you want to choose for every song? ", Color.WHITE)
+        paint("> Do you want to choose for every songs? ", Color.WHITE)
         + paint("[y/n] ", Color.WHITE, style=Style.BOLD)
     ).lower() not in ("yes", "y", "")
     return spotify_playlist_link if spotify else None, automatic
