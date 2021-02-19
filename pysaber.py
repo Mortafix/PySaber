@@ -1,24 +1,26 @@
 from datetime import datetime
-from os import mkdir, path, walk
+from os import mkdir, path
 from re import match, search, sub
 from sys import argv
 
 from bs4 import BeautifulSoup as bs
 from colorifix.colorifix import Color, Style, paint
-from halo import Halo
+from config import Config
 from pymortafix.searching import HEADERS
 from requests import get
 from tabulate import tabulate
-
-SPINNER = Halo()
 
 
 def sanitize(string):
     return sub("\n", "", string).strip()
 
 
+def sanitize_song_name(name):
+    return (m := search(r"^([^\(,\-\[\.]+)", name)) and m.group(1).strip()
+
+
 def search_songs(query):
-    SPINNER.start(f"Searching for {paint(query,Color.BLUE)}")
+    Config.SPINNER.start(f"Searching for {paint(query,Color.BLUE)}")
     query = sub(r"\s+", "+", query)
     soup = bs(
         get(f"https://bsaber.com/?s={query}&orderby=relevance&order=DESC").text,
@@ -71,20 +73,22 @@ def get_info(row):
 def download_song(song_name, link, filename):
     colored_song_name = paint(song_name, Color.BLUE)
     if not link:
-        SPINNER.fail(f"No link working for {colored_song_name}")
-    SPINNER.start(f"Downloading {colored_song_name}")
+        Config.SPINNER.fail(f"No link working for {colored_song_name}")
+    Config.SPINNER.start(f"Downloading {colored_song_name}")
     zip_song = get(link, headers=HEADERS)
     open(filename, "wb").write(zip_song.content)
-    SPINNER.succeed(f"Downloaded {colored_song_name}")
+    Config.SPINNER.succeed(f"Downloaded {colored_song_name}")
 
 
-def get_spotify_songs(playlist):
-    soup = bs(get(playlist).text, "html.parser")
-    titles = [s.text for s in soup.findAll("span", {"class": "track-name"})]
-    artits = [
-        s.find("a").text for s in soup.findAll("span", {"class": "artists-albums"})
+def get_spotify_songs(playlist_link):
+    playlist = Config.SPOTIFY.playlist(playlist_link)
+    return [
+        (
+            sanitize_song_name(song.get("track").get("name")),
+            song.get("track").get("artists")[0].get("name"),
+        )
+        for song in playlist.get("tracks").get("items")
     ]
-    return list(zip(titles, artits))
 
 
 def retrieve_params(spotify=True):
@@ -184,7 +188,7 @@ def main():
             bsaber_songs = combine_search(bsaber_songs, search_songs(song_less))
         if bsaber_songs:
             bsaber_songs = sorted(bsaber_songs, key=lambda x: -x[2] / (x[3] + 0.01))
-            SPINNER.succeed(f"Searched for {paint(song_more,Color.BLUE)}")
+            Config.SPINNER.succeed(f"Searched for {paint(song_more,Color.BLUE)}")
             if not automatic:
                 print(songs_table(bsaber_songs))
                 n = input(paint("> Choose a song: [0:skip] ", Color.WHITE))
@@ -206,11 +210,13 @@ def main():
                 if not path.exists(filename):
                     download_song(song_name, song_link, filename)
                 else:
-                    SPINNER.succeed(f"Already downloaded {paint(song_more,Color.BLUE)}")
+                    Config.SPINNER.succeed(
+                        f"Already downloaded {paint(song_more,Color.BLUE)}"
+                    )
             else:
-                SPINNER.fail(f"Skipped {paint(song_more,Color.BLUE)}")
+                Config.SPINNER.fail(f"Skipped {paint(song_more,Color.BLUE)}")
         else:
-            SPINNER.fail(f"No song found for {paint(song_more,Color.BLUE)}")
+            Config.SPINNER.fail(f"No song found for {paint(song_more,Color.BLUE)}")
         print("\n")
 
 
