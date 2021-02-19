@@ -1,4 +1,5 @@
 from datetime import datetime
+from os import mkdir, path, walk
 from re import match, search, sub
 from sys import argv
 
@@ -67,13 +68,13 @@ def get_info(row):
     return (title, difficulties, upvote, downvote, mapper, date, dwn_link)
 
 
-def download_song(song_name, link):
+def download_song(song_name, link, filename):
     colored_song_name = paint(song_name, Color.BLUE)
     if not link:
         SPINNER.fail(f"No link working for {colored_song_name}")
     SPINNER.start(f"Downloading {colored_song_name}")
     zip_song = get(link, headers=HEADERS)
-    open(f"{song_name}.zip", "wb").write(zip_song.content)
+    open(filename, "wb").write(zip_song.content)
     SPINNER.succeed(f"Downloaded {colored_song_name}")
 
 
@@ -97,11 +98,12 @@ def retrieve_params(spotify=True):
             spotify_playlist_link = input(
                 paint("Bad link!", Color.RED) + paint(" Retry: ", Color.WHITE)
             )
+    playlist_name = input(paint("> Choose a name for the playlist: ", Color.WHITE))
     automatic = input(
         paint("> Do you want to choose for every songs? ", Color.WHITE)
         + paint("[y/n] ", Color.WHITE, style=Style.BOLD)
     ).lower() not in ("yes", "y", "")
-    return spotify_playlist_link if spotify else None, automatic
+    return spotify_playlist_link if spotify else None, automatic, playlist_name
 
 
 def lines_splitting(name):
@@ -136,30 +138,46 @@ def combine_search(*songs_list):
 
 
 def main():
+    # from command line (file or single search)
     if len(argv) > 1:
-        try:
-            songs_to_search = [
-                (lines, None) for lines in open(argv[1]).read().split("\n") if lines
-            ]
-        except FileNotFoundError:
+        # search via file
+        if search(r"\.\w+", argv[1]):
+            try:
+                songs_to_search = [
+                    (lines, None) for lines in open(argv[1]).read().split("\n") if lines
+                ]
+            except FileNotFoundError:
+                print(
+                    paint("File ", Color.RED)
+                    + paint(argv[1], Color.RED, style=Style.UNDERLINE)
+                    + paint(" not found!", Color.RED)
+                )
+                exit(-1)
             print(
-                paint("File ", Color.RED)
-                + paint(argv[1], Color.RED, style=Style.UNDERLINE)
-                + paint(" not found!", Color.RED)
+                paint("> Songs list provided via file ", Color.WHITE)
+                + paint(argv[1], Color.BLUE)
             )
-            exit(-1)
-        print(
-            paint("> Songs list provided via file ", Color.WHITE)
-            + paint(argv[1], Color.BLUE)
-        )
-        _, automatic = retrieve_params(spotify=False)
+            _, automatic, playlist_name = retrieve_params(spotify=False)
+        # search via text
+        else:
+            automatic = False
+            playlist_name = None
+            songs_to_search = [(argv[1], None)]
+            print(
+                paint("> Single song search ", Color.WHITE) + paint(argv[1], Color.BLUE)
+            )
+    # search via Spotify plalist
     else:
-        spotify_playlist_link, automatic = retrieve_params()
+        spotify_playlist_link, automatic, playlist_name = retrieve_params()
         songs_to_search = [
             (f"{title} {artist}", title)
             for title, artist in get_spotify_songs(spotify_playlist_link)
         ]
+    if playlist_name:
+        if not path.exists(playlist_name):
+            mkdir(playlist_name)
     print()
+    # downloading
     for song_more, song_less in songs_to_search:
         bsaber_songs = search_songs(song_more)
         if song_less:
@@ -181,7 +199,14 @@ def main():
                 n = 1
             if int(n):
                 selected_song = bsaber_songs[int(n) - 1]
-                download_song(selected_song[0], selected_song[-1])
+                song_name, song_link = selected_song[0], selected_song[-1]
+                filename = (
+                    f"{playlist_name}/{song_name}.zip" if playlist_name else song_name
+                )
+                if not path.exists(filename):
+                    download_song(song_name, song_link, filename)
+                else:
+                    SPINNER.succeed(f"Already downloaded {paint(song_more,Color.BLUE)}")
             else:
                 SPINNER.fail(f"Skipped {paint(song_more,Color.BLUE)}")
         else:
