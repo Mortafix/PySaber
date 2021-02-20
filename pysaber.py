@@ -218,6 +218,7 @@ def main(args):
             + paint(" doesn't exist!", Color.RED)
         )
         exit(-1)
+    path_to_folder = args.path or "."
     spotify_playlist_link, playlist_name, automatic, test = retrieve_params(args=args)
     if args.file:
         try:
@@ -251,8 +252,8 @@ def main(args):
             paint("> Songs list provided via ", Color.WHITE)
             + paint("Spotify playlist", Color.BLUE)
         )
-    if not test and not path.exists(path.join(args.path, playlist_name)):
-        mkdir(path.join(args.path, playlist_name))
+    if not test and not path.exists(path.join(path_to_folder, playlist_name)):
+        mkdir(path.join(path_to_folder, playlist_name))
     print()
     # downloading
     for number, song_more, song_less in songs_to_search:
@@ -277,7 +278,7 @@ def main(args):
             if int(n):
                 selected_song = bsaber_songs[int(n) - 1]
                 song_name, song_link = selected_song[0], selected_song[-1]
-                path_to_file = path.join(args.path or ".", playlist_name, song_name)
+                path_to_file = path.join(path_to_folder, playlist_name, song_name)
                 filename = f"{path_to_file}.zip" if playlist_name else song_name
                 if test:
                     Config.SPINNER.succeed(
@@ -287,8 +288,11 @@ def main(args):
                     download_song(song_name, song_link, filename)
                 else:
                     Config.SPINNER.succeed(
-                        f"Already downloaded {paint(song_more,Color.BLUE)}"
+                        f"Already downloaded {paint(song_name,Color.BLUE)}"
                     )
+                open(path.join(path_to_folder, f"{playlist_name}.log"), "a+").write(
+                    f"{song_name}\n"
+                )
             else:
                 Config.SPINNER.fail(f"Skipped {paint(song_more,Color.BLUE)}")
         else:
