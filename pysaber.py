@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from datetime import datetime
 from os import mkdir, path
 from re import match, search, sub
@@ -91,8 +92,9 @@ def get_spotify_songs(playlist_link):
     ]
 
 
-def retrieve_params(spotify=True):
-    if spotify:
+def retrieve_params(args):
+    spotify_playlist_link = None
+    if not args.file and not args.song:
         spotify_playlist_link = input(
             paint("> ", Color.WHITE)
             + paint("Spotify", Color.GREEN)
@@ -102,12 +104,24 @@ def retrieve_params(spotify=True):
             spotify_playlist_link = input(
                 paint("Bad link!", Color.RED) + paint(" Retry: ", Color.WHITE)
             )
-    playlist_name = input(paint("> Choose a name for the playlist: ", Color.WHITE))
-    automatic = input(
-        paint("> Do you want to choose for every songs? ", Color.WHITE)
-        + paint("[y/n] ", Color.WHITE, style=Style.BOLD)
-    ).lower() not in ("yes", "y", "")
-    return spotify_playlist_link if spotify else None, automatic, playlist_name
+    if not args.p:
+        playlist_name = input(paint("> Choose a name for the playlist: ", Color.WHITE))
+    else:
+        playlist_name = args.p
+    if not args.auto and not args.no_auto and not args.auto_test:
+        while (
+            automatic := input(
+                paint("> Choose mode: ", Color.WHITE)
+                + paint("[auto|list|test] ", Color.WHITE, style=Style.BOLD)
+            ).lower()
+        ) not in ("auto", "list", "test"):
+            pass
+        auto = automatic != "list"
+        test = automatic == "test"
+    else:
+        auto = not args.no_auto
+        test = args.auto_test
+    return (spotify_playlist_link, playlist_name, auto, test)
 
 
 def lines_splitting(name):
@@ -148,56 +162,93 @@ def special_song_name(lines):
         return None, lines
 
 
-def main():
-    # from command line (file or single search)
-    if len(argv) > 1:
-        # search via file
-        if search(r"\.\w+", argv[1]):
-            try:
-                songs_to_search = [
-                    (*special_song_name(lines), None)
-                    for lines in open(argv[1]).read().split("\n")
-                    if lines
-                ]
-            except FileNotFoundError:
-                print(
-                    paint("File ", Color.RED)
-                    + paint(argv[1], Color.RED, style=Style.UNDERLINE)
-                    + paint(" not found!", Color.RED)
-                )
-                exit(-1)
+def argparsing():
+    parser = ArgumentParser(
+        prog="PySaber",
+        description="Let's rock on Beat Saber.",
+        usage="pysaber [file] [--auto|--no-auto] [-p playlist-name]",
+        epilog="Example: pysaber songs.txt --no-auto -p BeastSaver",
+    )
+    parser.add_argument(
+        "-s", "--song", type=str, help="song name for a single search", metavar=("FILE")
+    )
+    parser.add_argument(
+        "-f", "--file", type=str, help="text file with a songs list", metavar=("SONG")
+    )
+    parser.add_argument("-p", type=str, help="playlist name", metavar=("PLAYLIST"))
+    parser.add_argument(
+        "-a",
+        "--auto",
+        action="store_true",
+        help="automatic download first matching song",
+    )
+    parser.add_argument(
+        "-na",
+        "--no-auto",
+        action="store_true",
+        help="choose a BS song from the matching list for every songs",
+    )
+    parser.add_argument(
+        "-at",
+        "--auto-test",
+        action="store_true",
+        help="test automatic matching withuout downloading",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="script version",
+        action="version",
+        version="pysaber v0.1.0",
+    )
+    return parser.parse_args()
+
+
+def main(args):
+    spotify_playlist_link, playlist_name, automatic, test = retrieve_params(args=args)
+    if args.file:
+        try:
+            songs_to_search = [
+                (*special_song_name(lines), None)
+                for lines in open(args.file).read().split("\n")
+                if lines
+            ]
+        except FileNotFoundError:
             print(
-                paint("> Songs list provided via file ", Color.WHITE)
-                + paint(argv[1], Color.BLUE)
+                paint("File ", Color.RED)
+                + paint(args.file, Color.RED, style=Style.UNDERLINE)
+                + paint(" not found!", Color.RED)
             )
-            _, automatic, playlist_name = retrieve_params(spotify=False)
-        # search via text
-        else:
-            automatic = False
-            playlist_name = None
-            songs_to_search = [(*special_song_name(argv[1]), None)]
-            print(
-                paint("> Single song search ", Color.WHITE) + paint(argv[1], Color.BLUE)
-            )
-    # search via Spotify plalist
+            exit(-1)
+        print(
+            paint("> Songs list provided via file ", Color.WHITE)
+            + paint(args.file, Color.BLUE)
+        )
+    elif args.song:
+        songs_to_search = [(*special_song_name(args.song), None)]
+        print(
+            paint("> Single song search ", Color.WHITE) + paint(args.song, Color.BLUE)
+        )
     else:
-        spotify_playlist_link, automatic, playlist_name = retrieve_params()
         songs_to_search = [
             (None, f"{title} {artist}", title)
             for title, artist in get_spotify_songs(spotify_playlist_link)
         ]
-    if playlist_name:
-        if not path.exists(playlist_name):
-            mkdir(playlist_name)
+        print(
+            paint("> Songs list provided via ", Color.WHITE)
+            + paint("Spotify playlist", Color.BLUE)
+        )
+    if not path.exists(playlist_name):
+        mkdir(playlist_name)
     print()
     # downloading
     for number, song_more, song_less in songs_to_search:
         bsaber_songs = search_songs(song_more)
         if song_less:
             bsaber_songs = combine_search(bsaber_songs, search_songs(song_less))
+        Config.SPINNER.succeed(f"Searched for {paint(song_more,Color.BLUE)}")
         if bsaber_songs:
             bsaber_songs = sorted(bsaber_songs, key=lambda x: -x[2] / (x[3] + 0.01))
-            Config.SPINNER.succeed(f"Searched for {paint(song_more,Color.BLUE)}")
             if not automatic:
                 print(songs_table(bsaber_songs))
                 n = input(paint("> Choose a song: [0:skip] ", Color.WHITE))
@@ -216,7 +267,11 @@ def main():
                 filename = (
                     f"{playlist_name}/{song_name}.zip" if playlist_name else song_name
                 )
-                if not path.exists(filename):
+                if args.auto_test or test:
+                    Config.SPINNER.succeed(
+                        f"Matched with {paint(song_name,Color.BLUE)}"
+                    )
+                elif not path.exists(filename):
                     download_song(song_name, song_link, filename)
                 else:
                     Config.SPINNER.succeed(
@@ -230,4 +285,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = argparsing()
+    main(args)
