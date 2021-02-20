@@ -195,6 +195,12 @@ def argparsing():
         help="test automatic matching withuout downloading",
     )
     parser.add_argument(
+        "--path",
+        type=str,
+        help="path where to save the songs (playlist parent folder)",
+        metavar=("PATH"),
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="script version",
@@ -205,6 +211,13 @@ def argparsing():
 
 
 def main(args):
+    if args.path and not path.exists(path.join(args.path)):
+        print(
+            paint("Path ", Color.RED)
+            + paint(args.path, Color.RED, style=Style.UNDERLINE)
+            + paint(" doesn't exist!", Color.RED)
+        )
+        exit(-1)
     spotify_playlist_link, playlist_name, automatic, test = retrieve_params(args=args)
     if args.file:
         try:
@@ -238,8 +251,8 @@ def main(args):
             paint("> Songs list provided via ", Color.WHITE)
             + paint("Spotify playlist", Color.BLUE)
         )
-    if not path.exists(playlist_name):
-        mkdir(playlist_name)
+    if not test and not path.exists(path.join(args.path, playlist_name)):
+        mkdir(path.join(args.path, playlist_name))
     print()
     # downloading
     for number, song_more, song_less in songs_to_search:
@@ -264,10 +277,9 @@ def main(args):
             if int(n):
                 selected_song = bsaber_songs[int(n) - 1]
                 song_name, song_link = selected_song[0], selected_song[-1]
-                filename = (
-                    f"{playlist_name}/{song_name}.zip" if playlist_name else song_name
-                )
-                if args.auto_test or test:
+                path_to_file = path.join(args.path or ".", playlist_name, song_name)
+                filename = f"{path_to_file}.zip" if playlist_name else song_name
+                if test:
                     Config.SPINNER.succeed(
                         f"Matched with {paint(song_name,Color.BLUE)}"
                     )
