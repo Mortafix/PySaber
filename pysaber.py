@@ -166,8 +166,11 @@ def argparsing():
     parser = ArgumentParser(
         prog="PySaber",
         description="Let's rock on Beat Saber.",
-        usage="pysaber [file] [--auto|--no-auto] [-p playlist-name]",
-        epilog="Example: pysaber songs.txt --no-auto -p BeastSaver",
+        usage=(
+            "pysaber [-f file] [--auto|--no-auto|--auto-test] [-p playlist-name] "
+            "[--path path-to-playlist]"
+        ),
+        epilog="Example: pysaber -f songs.txt -p BeastSaver --no-auto",
     )
     parser.add_argument(
         "-s", "--song", type=str, help="song name for a single search", metavar=("FILE")
@@ -195,6 +198,7 @@ def argparsing():
         help="test automatic matching withuout downloading",
     )
     parser.add_argument(
+        "-pa",
         "--path",
         type=str,
         help="path where to save the songs (playlist parent folder)",
