@@ -2,7 +2,6 @@ from argparse import ArgumentParser
 from datetime import datetime
 from os import mkdir, path
 from re import match, search, sub
-from sys import argv
 
 from bs4 import BeautifulSoup as bs
 from colorifix.colorifix import Color, Style, paint
@@ -108,7 +107,7 @@ def retrieve_params(args):
         playlist_name = input(paint("> Choose a name for the playlist: ", Color.WHITE))
     else:
         playlist_name = args.p
-    if not args.auto and not args.no_auto and not args.auto_test:
+    if not args.auto and not args.list and not args.test:
         while (
             automatic := input(
                 paint("> Choose mode: ", Color.WHITE)
@@ -119,8 +118,8 @@ def retrieve_params(args):
         auto = automatic != "list"
         test = automatic == "test"
     else:
-        auto = not args.no_auto
-        test = args.auto_test
+        auto = not args.list
+        test = args.test
     return (spotify_playlist_link, playlist_name, auto, test)
 
 
@@ -180,29 +179,27 @@ def argparsing():
     )
     parser.add_argument("-p", type=str, help="playlist name", metavar=("PLAYLIST"))
     parser.add_argument(
-        "-a",
+        "-d",
+        "--dir",
+        type=str,
+        help="path where to save the songs (playlist parent folder)",
+        metavar=("PATH"),
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--auto",
         action="store_true",
         help="automatic download first matching song",
     )
-    parser.add_argument(
-        "-na",
-        "--no-auto",
+    group.add_argument(
+        "--list",
         action="store_true",
-        help="choose a BS song from the matching list for every songs",
+        help="choose a song from the matching list for every songs",
     )
-    parser.add_argument(
-        "-at",
-        "--auto-test",
+    group.add_argument(
+        "--test",
         action="store_true",
         help="test automatic matching withuout downloading",
-    )
-    parser.add_argument(
-        "-pa",
-        "--path",
-        type=str,
-        help="path where to save the songs (playlist parent folder)",
-        metavar=("PATH"),
     )
     parser.add_argument(
         "-v",
@@ -215,14 +212,14 @@ def argparsing():
 
 
 def main(args):
-    if args.path and not path.exists(path.join(args.path)):
+    if args.dir and not path.exists(path.join(args.dir)):
         print(
             paint("Path ", Color.RED)
-            + paint(args.path, Color.RED, style=Style.UNDERLINE)
+            + paint(args.dir, Color.RED, style=Style.UNDERLINE)
             + paint(" doesn't exist!", Color.RED)
         )
         exit(-1)
-    path_to_folder = args.path or "."
+    path_to_folder = args.dir or "."
     spotify_playlist_link, playlist_name, automatic, test = retrieve_params(args=args)
     if args.file:
         try:
