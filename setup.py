@@ -23,6 +23,6 @@ setuptools.setup(
     ],
     python_requires=">=3.8",
     keywords=["beat saber", "spotify", "bsaber", "beat saver"],
-    # package_data={"pysaber": ["config.py"]},
+    package_data={"pysaber": ["config.json"]},
     entry_points={"console_scripts": ["saberio=pysaber.saberio:main"]},
 )
