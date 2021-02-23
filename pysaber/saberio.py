@@ -228,7 +228,8 @@ def argparsing():
     return parser.parse_args()
 
 
-def main(args):
+def main():
+    args = argparsing()
     if args.dir and not path.exists(path.join(args.dir)):
         print(
             paint("Path ", Color.RED)
@@ -329,5 +330,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = argparsing()
-    main(args)
+    main()
