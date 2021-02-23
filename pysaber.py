@@ -27,7 +27,9 @@ def search_songs(query):
         "html.parser",
     )
     songs = [
-        i for song in soup.findAll("div", {"class": "row"}) if (i := get_info(song))
+        i
+        for song in soup.findAll("div", {"class": "row"})
+        if (i := get_info(song)) and i[0]
     ]
     return songs
 
@@ -48,7 +50,9 @@ def trunc_difficulty(difficulty):
 def get_info(row):
     if row.find("div", {"class": ["widget", "small-2", "subfooter-menu-holder"]}):
         return None
-    title = sanitize(row.find("header").text)
+    header = row.find("header")
+    code = (m := search(r"songs/(\w+)/", header.find("a").get("href"))) and m.group(1)
+    title = sanitize(header.text)
     difficulties = ", ".join(
         [
             trunc_difficulty(d.text)
@@ -67,7 +71,15 @@ def get_info(row):
     ).group(1)
     date = datetime.fromisoformat(row.find("time").get("content"))
     dwn_link = (link := row.find("a", {"class": "-download-zip"})) and link.get("href")
-    return (title, difficulties, upvote, downvote, mapper, date, dwn_link)
+    return (code, title, dwn_link, difficulties, upvote, downvote, mapper, date)
+
+
+def get_info_by_code(code):
+    soup = bs(get(f"https://bsaber.com/songs/{code}").text, "html.parser")
+    header = soup.find("header", {"class": "post-title"})
+    name = header.find("h1").text
+    link = f"https://beatsaver.com/api/download/key/{code}"
+    return code, name, link
 
 
 def download_song(song_name, link, filename):
@@ -133,11 +145,12 @@ def lines_splitting(name):
 def songs_table(songs):
     headers = [
         paint(h, style=Style.BOLD)
-        for h in ["", "Song", "Mapper", "Up", "Down", "Difficulty", "Date"]
+        for h in ["", "Code", "Song", "Mapper", "Up", "Down", "Difficulty", "Date"]
     ]
     entries = [
         (
             i,
+            paint(code, Color.MAGENTA),
             lines_splitting(name),
             paint(mapper, Color.BLUE),
             paint(up, Color.GREEN),
@@ -145,9 +158,13 @@ def songs_table(songs):
             paint(difficulties, Color.YELLOW),
             paint(f"{date:%d.%m.%Y}", Color.GRAY),
         )
-        for i, (name, difficulties, up, down, mapper, date, _) in enumerate(songs, 1)
+        for i, (code, name, _, difficulties, up, down, mapper, date) in enumerate(
+            songs, 1
+        )
     ]
-    return tabulate(entries, headers=headers, tablefmt="fancy_grid")
+    return tabulate(
+        entries, headers=headers, tablefmt="fancy_grid", disable_numparse=True
+    )
 
 
 def combine_search(*songs_list):
@@ -155,7 +172,7 @@ def combine_search(*songs_list):
 
 
 def special_song_name(lines):
-    if (m := search(r"(.+?)(\-\d+)?\s*$", lines)) and m.group(2):
+    if (m := search(r"(.*?)(\#\w+)?\s*$", lines)) and m.group(2):
         return m.group(2)[1:], m.group(1).strip()
     else:
         return None, lines
@@ -206,7 +223,7 @@ def argparsing():
         "--version",
         help="script version",
         action="version",
-        version="pysaber v0.1.0",
+        version="pysaber v0.2.0",
     )
     return parser.parse_args()
 
@@ -257,47 +274,57 @@ def main(args):
         mkdir(path.join(path_to_folder, playlist_name))
     print()
     # downloading
-    for number, song_more, song_less in songs_to_search:
-        bsaber_songs = search_songs(song_more)
-        if song_less:
-            bsaber_songs = combine_search(bsaber_songs, search_songs(song_less))
-        Config.SPINNER.succeed(f"Searched for {paint(song_more,Color.BLUE)}")
-        if bsaber_songs:
-            bsaber_songs = sorted(bsaber_songs, key=lambda x: -x[2] / (x[3] + 0.01))
-            if not automatic:
-                print(songs_table(bsaber_songs))
-                n = input(paint("> Choose a song: [0:skip] ", Color.WHITE))
-                while not match(r"\d+", n) or int(n) not in range(
-                    len(bsaber_songs) + 1
-                ):
-                    n = input(
-                        paint("Wrong!  ", Color.RED)
-                        + paint("> Retry: [0:skip] ", Color.WHITE)
-                    )
-            else:
-                n = number or 1
-            if int(n):
-                selected_song = bsaber_songs[int(n) - 1]
-                song_name, song_link = selected_song[0], selected_song[-1]
-                path_to_file = path.join(path_to_folder, playlist_name, song_name)
-                filename = f"{path_to_file}.zip" if playlist_name else song_name
-                if test:
-                    Config.SPINNER.succeed(
-                        f"Matched with {paint(song_name,Color.BLUE)}"
-                    )
-                elif not path.exists(filename):
-                    download_song(song_name, song_link, filename)
-                else:
-                    Config.SPINNER.succeed(
-                        f"Already downloaded {paint(song_name,Color.BLUE)}"
-                    )
-                open(path.join(path_to_folder, f"{playlist_name}.log"), "a+").write(
-                    f"{song_name}\n"
+    for code_song, song_more, song_less in songs_to_search:
+        song_to_download = None
+        if not code_song:
+            bsaber_songs = search_songs(song_more)
+            if song_less:
+                bsaber_songs = combine_search(bsaber_songs, search_songs(song_less))
+            Config.SPINNER.succeed(f"Searched for {paint(song_more,Color.BLUE)}")
+            if bsaber_songs:
+                bsaber_songs = sorted(
+                    bsaber_songs, key=lambda x: (-x[4] + 1) / (x[5] + 1)
                 )
+                if not automatic:
+                    print(songs_table(bsaber_songs))
+                    n = input(paint("> Choose a song: [0:skip] ", Color.WHITE))
+                    while not match(r"\d+", n) or int(n) not in range(
+                        len(bsaber_songs) + 1
+                    ):
+                        n = input(
+                            paint("Wrong!  ", Color.RED)
+                            + paint("> Retry: [0:skip] ", Color.WHITE)
+                        )
+                else:
+                    n = 1
+                if int(n):
+                    song_to_download = bsaber_songs[int(n) - 1]
+                else:
+                    Config.SPINNER.fail(f"Skipped {paint(song_more,Color.BLUE)}")
             else:
-                Config.SPINNER.fail(f"Skipped {paint(song_more,Color.BLUE)}")
+                Config.SPINNER.fail(f"No song found for {paint(song_more,Color.BLUE)}")
         else:
-            Config.SPINNER.fail(f"No song found for {paint(song_more,Color.BLUE)}")
+            Config.SPINNER.succeed(
+                f"Searched for {paint(song_more,Color.BLUE)} "
+                f"[{paint(code_song,Color.MAGENTA)}]"
+            )
+            song_to_download = get_info_by_code(code_song)
+        # song downloading
+        if song_to_download:
+            code_song, song_name, song_link = song_to_download[:3]
+            path_to_file = path.join(path_to_folder, playlist_name, song_name)
+            filename = f"{path_to_file}.zip" if playlist_name else song_name
+            if test:
+                Config.SPINNER.succeed(f"Matched with {paint(song_name,Color.BLUE)}")
+            elif not path.exists(filename):
+                download_song(song_name, song_link, filename)
+            else:
+                Config.SPINNER.succeed(
+                    f"Already downloaded {paint(song_name,Color.BLUE)}"
+                )
+            open(path.join(path_to_folder, f"{playlist_name}.log"), "a+").write(
+                f"{song_name} #{code_song}\n"
+            )
         print("\n")
 
 
