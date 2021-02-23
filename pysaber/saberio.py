@@ -1,19 +1,35 @@
 from argparse import ArgumentParser
 from datetime import datetime
+from json import dump, load
 from os import mkdir, path
 from re import match, search, sub
 
 from bs4 import BeautifulSoup as bs
 from colorifix.colorifix import Color, Style, paint
-from config import Config
 from halo import Halo
 from pymortafix.searching import HEADERS
 from requests import get
 from spotipy import Spotify
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOauthError
 from tabulate import tabulate
 
 SPINNER = Halo()
+
+# Config
+
+
+def get_config():
+    return load(open(f"{path.abspath(path.dirname(__file__))}/config.json", "r"))
+
+
+def save_config(client_id, secret_id):
+    keys = {"spotify-id": client_id, "spotify-secret-id": secret_id}
+    dump(
+        keys, open(f"{path.abspath(path.dirname(__file__))}/config.json", "w"), indent=4
+    )
+
+
+# Utilities
 
 
 def sanitize(string):
@@ -98,12 +114,18 @@ def download_song(song_name, link, filename):
 
 
 def get_spotify_songs(playlist_link):
-    client = Spotify(
-        client_credentials_manager=SpotifyClientCredentials(
-            Config._SPOTIFY_ID, Config._SPOTIFY_SECRET_ID
+    config = get_config()
+    try:
+        client = Spotify(
+            client_credentials_manager=SpotifyClientCredentials(
+                config.get("spotify-id"), config.get("spotify-secret-id")
+            )
         )
-    )
-    playlist = client.playlist(playlist_link)
+        playlist = client.playlist(playlist_link)
+    except SpotifyOauthError:
+        print("\n" + paint("Error! ", Color.RED) + "Please run the configuration once.")
+        print("Run " + paint("saberio --config", Color.BLUE))
+        exit(-1)
     return [
         (
             sanitize_song_name(song.get("track").get("name")),
@@ -229,6 +251,11 @@ def argparsing():
         help="test automatic matching withuout downloading",
     )
     parser.add_argument(
+        "--config",
+        help="Spotify configuration",
+        action="store_true",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="script version",
@@ -240,6 +267,32 @@ def argparsing():
 
 def main():
     args = argparsing()
+
+    # spotify config
+    if args.config:
+        print(
+            "To get a key, go to "
+            + paint(
+                "https://developer.spotify.com/dashboard/applications", Color.MAGENTA
+            )
+            + " and create a new application."
+        )
+        client_id = input("Client ID: ")
+        secret_id = input("Secret ID: ")
+        save_config(client_id, secret_id)
+        try:
+            client = Spotify(
+                client_credentials_manager=SpotifyClientCredentials(
+                    client_id, secret_id
+                )
+            )
+            client.search("test")
+            print(paint("Configuration successful!", Color.GREEN))
+        except SpotifyOauthError:
+            print(paint("Configuration failed.", Color.RED))
+        exit(-1)
+
+    # script
     if args.dir and not path.exists(path.join(args.dir)):
         print(
             paint("Path ", Color.RED)
