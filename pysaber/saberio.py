@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup as bs
 from colorifix.colorifix import Color, Style, paint
 from halo import Halo
 from pymortafix.searching import HEADERS
+from pymortafix.utils import multisub
 from requests import get
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOauthError
@@ -260,7 +261,7 @@ def argparsing():
         "--version",
         help="script version",
         action="version",
-        version="pysaber v0.2.0",
+        version="pysaber v0.2.1",
     )
     return parser.parse_args()
 
@@ -376,7 +377,11 @@ def main():
         # song downloading
         if song_to_download:
             code_song, song_name, song_link = song_to_download[:3]
-            path_to_file = path.join(path_to_folder, playlist_name, song_name)
+            path_to_file = path.join(
+                path_to_folder,
+                playlist_name,
+                multisub({"/": "_", " – ": "_", " ": "_"}, song_name),
+            )
             filename = f"{path_to_file}.zip" if playlist_name else song_name
             if test:
                 SPINNER.succeed(f"Matched with {paint(song_name,Color.BLUE)}")
