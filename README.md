@@ -8,7 +8,7 @@ There is a simple video you can follow to install and configure the script, [HER
 You can find the package, [here](https://pypi.org/project/saberio/).
 ```
 pip3 install saberio
-sabrio --config
+saberio --config
 ```
 
 # Usage
