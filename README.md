@@ -1,17 +1,12 @@
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/saberio)
-[![PyPI](https://img.shields.io/pypi/v/saberio?color=red)](https://pypi.org/project/saberio/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![GitHub](https://img.shields.io/github/license/mortafix/pysaber)
+# Forking
+I forked this repo because the original one was full of first-party requirements, was incredibly hard to understand on Windows, and even after fixing that threw a lot of errors. This fork cleans up the code a bit and doesn't reinvent the wheel.
 
 # Setup
-There is a simple video you can follow to install and configure the script, [HERE](https://www.loom.com/share/e9535e316f334e7eb1553526f95d0928).  
-You can find the package, [here](https://pypi.org/project/saberio/).
-```
-pip3 install saberio
-saberio --config
-```
+Run saberio.py. Make sure you have the requirements installed.
 
-# Usage
+# Old documentation
+
+## Usage
 There is a simple video with some examples, [HERE](https://www.loom.com/share/38fb26be202943a3ba9dc42fc6f71ae2).  
 You can use the help (`-h`) for more information.
 ```bash
@@ -19,7 +14,7 @@ saberio # simple with Spotify
 saberio -p PlaylistWow --auto -f path/to/file/songs-wow.txt
 ```
 
-# Parameters
+## Parameters
 There are some parameters you can combine to customize the downloading process.
 
 * The package can be use with a **Spotify playlist**, a **text file** or a **single song**.
