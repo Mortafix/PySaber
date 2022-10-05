@@ -1,5 +1,5 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/saberio)
-[![PyPI](https://img.shields.io/pypi/v/nepox?color=red)](https://pypi.org/project/saberio/)
+[![PyPI](https://img.shields.io/pypi/v/saberio?color=red)](https://pypi.org/project/saberio/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![GitHub](https://img.shields.io/github/license/mortafix/pysaber)
 
