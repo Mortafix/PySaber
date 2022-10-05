@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="saberio",
-    version="0.2.1",
+    version="1.0.1",
     author="Moris Doratiotto",
     author_email="moris.doratiotto@gmail.com",
     description="A python module to download song for Beat Saber",
@@ -13,7 +13,13 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/mortafix/PySaber",
     packages=setuptools.find_packages(),
-    install_requires=["bs4", "pymortafix", "halo", "spotipy", "tabulate"],
+    install_requires=[
+        "beautifulsoup4 == 4.11.1",
+        "colorifix == 2.0.4",
+        "pymortafix == 0.2.2",
+        "halo == 0.0.31",
+        "tabulate == 0.8.10",
+    ],
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
@@ -22,7 +28,7 @@ setuptools.setup(
         "Intended Audience :: Developers",
     ],
     python_requires=">=3.8",
-    keywords=["beat saber", "spotify", "bsaber", "beat saver"],
-    package_data={"pysaber": ["config.json"]},
+    keywords=["beat saber", "bsaber", "beat saver"],
+    package_data={"pysaber": ["utils/helpers.py"]},
     entry_points={"console_scripts": ["saberio=pysaber.saberio:main"]},
 )
