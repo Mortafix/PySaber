@@ -15,3 +15,5 @@ spinners==0.0.24
 tabulate==0.8.10
 termcolor==2.0.1
 urllib3==1.26.12
+wcwidth==0.2.6
+spotipy==2.22.1
