@@ -19,6 +19,8 @@ setuptools.setup(
         "pymortafix == 0.2.2",
         "halo == 0.0.31",
         "tabulate == 0.8.10",
+        "wcwidth == 0.2.6",
+        "spotipy== 2.22.1",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.8",
@@ -27,7 +29,7 @@ setuptools.setup(
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     keywords=["beat saber", "bsaber", "beat saver"],
     package_data={"pysaber": ["utils/helpers.py"]},
     entry_points={"console_scripts": ["saberio=pysaber.saberio:main"]},

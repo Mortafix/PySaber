@@ -1,10 +1,12 @@
 from argparse import ArgumentParser
-from os import mkdir, path
+from os import makedirs, path
 
 from colorifix.colorifix import paint, ppaint
 from pymortafix.utils import multisub, strict_input
 from pysaber.utils.helpers import (SPINNER, download_song, get_info_by_code,
-                                   look_for_code, search_songs, songs_table)
+                                   look_for_code, search_songs, songs_table,
+                                   bookmark_song)
+from pysaber.utils.spotify import(retrieve_params, get_spotify_songs)
 
 
 def argparsing():
@@ -28,6 +30,16 @@ def argparsing():
     )
     search.add_argument(
         "-f", "--file", type=str, help="text file with a songs list", metavar=("SONG")
+    )
+    bookmark = parser.add_argument_group()
+    bookmark.add_argument(
+        "-c", "--cookie", type=str, help="cookie for bookmarking."
+    )
+    bookmark.add_argument(
+        '-b', action="store_true", help="bookmark all songs searched from BeastSaber."
+    )
+    bookmark.add_argument(
+        "-o", action="store_true", help="bookmark songs without downloading."
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
@@ -55,7 +67,15 @@ def argparsing():
 
 def main():
     args = argparsing()
+    spotify_playlist_link, playlist_name = retrieve_params(args)
 
+    # default
+    path_to_folder = args.dir and path.dirname(path.join((args.dir or "."), playlist_name)) or '.'
+    playlist_name = args.p or "songs"
+    automatic = not args.list or args.auto or args.test
+    is_test = args.test or False
+    mode_name = (is_test and "test") or (automatic and "auto") or "list"
+        
     # check
     if args.dir and not path.exists(path.join(args.dir)):
         ppaint(f"[#red]Path [@underline]{args.dir}[/@] doesn't exist![/]")
@@ -63,18 +83,6 @@ def main():
     if args.file and not path.exists(path.join(args.file)):
         ppaint(f"[#red]File [@underline]{args.file}[/@] doesn't exist![/]")
         exit(-1)
-
-    # default
-    path_to_folder = args.dir or "."
-    playlist_name = args.p or "songs"
-    automatic = not args.list or args.auto or args.test
-    is_test = args.test or False
-    mode_name = (is_test and "test") or (automatic and "auto") or "list"
-    ppaint(
-        f"> Folder: [#gray @bold]{path_to_folder}[/]\n"
-        f"> Playlist: [#gray @bold]{playlist_name}[/]\n"
-        f"> Mode: [#gray @bold]{mode_name}[/]"
-    )
 
     # param: songs
     songs = list()
@@ -86,8 +94,18 @@ def main():
     elif args.song:
         songs = [look_for_code(args.song)]
         ppaint(f"> Search: [#gray @bold]{args.song}[/]")
-    if not is_test and not path.exists(path.join(path_to_folder, playlist_name)):
-        mkdir(path.join(path_to_folder, playlist_name))
+    elif spotify_playlist_link != None: 
+        songs = [(None, f"{track} {artist}") for track, artist in get_spotify_songs(spotify_playlist_link)]
+
+
+    ppaint(
+        f"> Folder: [#gray @bold]{path_to_folder}[/]\n"
+        f"> Playlist: [#gray @bold]{playlist_name}[/]\n"
+        f"> Mode: [#gray @bold]{mode_name}[/]"
+    )
+
+    if not is_test and not args.o and not path.exists(path.join(path_to_folder, playlist_name)):
+        makedirs(path.join(path_to_folder, playlist_name))
     print()
 
     # searching
@@ -98,7 +116,7 @@ def main():
             SPINNER.succeed(paint(f"Search complete for [#blue]{song_more}[/]"))
             if bsaber_songs:
                 bsaber_songs = sorted(
-                    bsaber_songs, key=lambda x: (-x[4] + 1) / (x[5] + 1)
+                    bsaber_songs, key=lambda x: (-x[5] + 1) / (x[6] + 1)
                 )
                 n = 1
                 if not automatic:
@@ -106,10 +124,16 @@ def main():
                     n = strict_input(
                         paint("> Choose a song: [@underline][0:skip][/] "),
                         choices=list(map(str, range(len(bsaber_songs) + 1))),
-                        flush=True,
+                        flush=True
                     )
                 if int(n) > 0:
                     song_to_download = bsaber_songs[int(n) - 1]
+                    if args.cookie and (args.b or strict_input(
+                                paint('> Whether to add to the bookmark? [Y/n]'),
+                                choices=['y', 'n', 'Y', 'N', ''],
+                                flush=True) in ('y', 'Y', '')): 
+                        bookmark_song(song_to_download[3], song_to_download[1], args.cookie)
+                        if args.o: continue
                 else:
                     SPINNER.fail(paint(f"Skipped [#blue]{song_more}[/]"))
             else:
